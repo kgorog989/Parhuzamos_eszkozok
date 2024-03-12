@@ -5,11 +5,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 void print_matrix(int lines, int columns, float *matrix);
 
-// Threadblock sizes (e.g. for kernels myGEMM1 or myGEMM2)
-#define TS 32
+// Total number of threads (must be a multiple of M*N)
+#define TS 126
 
 int main(void)
 {
@@ -18,21 +19,22 @@ int main(void)
     int error_code;
 
     // Set the sizes
-    int K = 5;
-    int M = 5;
-    int N = 5;
+    int K = 16;
+    int M = 7;
+    int N = 3;
 
     // Create the matrices and initialize them with random values
-    float *A = (float *)malloc(M * K * sizeof(float *));
-    float *B = (float *)malloc(K * N * sizeof(float *));
-    float *C = (float *)malloc(M * N * sizeof(float *));
+    float *A = (float *)malloc(M * K * sizeof(float));
+    float *B = (float *)malloc(K * N * sizeof(float));
+    float *C = (float *)malloc(M * N * sizeof(float));
+    srand(time(NULL));
     for (int i = 0; i < M * K; i++)
     {
-        A[i] = 3.9 * i + i * i + 3.7;
+        A[i] = (float)(rand() % 1000000) / 10000;
     }
     for (int i = 0; i < K * N; i++)
     {
-        B[i] = 1.1 * i + 0.51 * i * i + 16.9;
+        B[i] = (float)(rand() % 1000000) / 10000;
     }
     for (int i = 0; i < M * N; i++)
     {
@@ -40,9 +42,11 @@ int main(void)
     }
 
     // Print matrices
-    printf("\nA matrix: %f", A[1*M+1]);
+    printf("\nA matrix: ");
     print_matrix(M, K, A);
+    printf("\nB matrix: ");
     print_matrix(K, N, B);
+    printf("\nC matrix: ");
     print_matrix(M, N, C);
 
     // Get platform
@@ -190,11 +194,11 @@ int main(void)
         return 0;
     }
 
-    printf("\narguments set\n");
+    printf("\nArguments set\n");
 
-    // Size specification
-    const size_t local[2] = {TS, TS};
-    const size_t global[2] = {M, N};
+    // Size specification (global is the total number of threads, local is the number of threadblocks in it)
+    const size_t local[2] = {M, N};
+    const size_t global[2] = {TS, TS};
 
     // Apply the kernel on the range
     cl_event event = NULL;
@@ -202,6 +206,7 @@ int main(void)
 
     // Wait for calculations to be finished
     clWaitForEvents(1, &event);
+    // clFinish(command_queue);
 
     // Copy the output matrix C back to the CPU memory
     err = clEnqueueReadBuffer(command_queue, bufC, CL_TRUE, 0, M * N * sizeof(float), C, 0, NULL, NULL);
@@ -214,6 +219,7 @@ int main(void)
     clFinish(command_queue);
 
     // Print the result, matrix C
+    printf("\nC matrix, filled with the results now: ");
     print_matrix(M, N, C);
 
     // Free the OpenCL memory objects
