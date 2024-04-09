@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 
     int num_iterations = 100;
     int num_ants;
-    int max_ants = 3;
+    int max_ants = 5;
     int num_cities = 312;
     double city_distances[num_cities][num_cities];
     double pheromones[num_cities][num_cities];
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     printf("Binary size : %d\n", sizes_param[0]);
 
     // Create the command queue
-    cl_command_queue command_queue = clCreateCommandQueue(context, device_id, NULL, NULL);
+    cl_command_queue command_queue = clCreateCommandQueue(context, device_id, CL_QUEUE_PROFILING_ENABLE, NULL);
 
     // Fill the distance matrix
     FILE *file;
@@ -140,8 +140,6 @@ int main(int argc, char *argv[])
         printf("%d\n", err);
         return 0;
     }
-    
-
 
     err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&buf_city_distances);
     if (err != CL_SUCCESS)
@@ -169,7 +167,8 @@ int main(int argc, char *argv[])
         cl_mem buf_ant_randoms = clCreateBuffer(context, CL_MEM_READ_WRITE, num_ants * num_cities * sizeof(int), NULL, NULL);
         cl_mem buf_visited_cities = clCreateBuffer(context, CL_MEM_READ_WRITE, num_ants * num_cities * sizeof(int), NULL, NULL);
 
-        clEnqueueWriteBuffer(command_queue, buf_pheromones, CL_TRUE, 0, num_cities * num_cities * sizeof(double), pheromones, 0, NULL, NULL);
+        cl_event kernel_event;
+        double full_kernel_time = 0;
 
         for (int i = 0; i < num_iterations; i++)
         {
@@ -177,7 +176,7 @@ int main(int argc, char *argv[])
             init_ant_randoms(num_ants, num_cities, ant_randoms);
             init_visited_cities(num_ants, num_cities, ant_tours, visited_cities);
 
-
+            clEnqueueWriteBuffer(command_queue, buf_pheromones, CL_TRUE, 0, num_cities * num_cities * sizeof(double), pheromones, 0, NULL, NULL);
             clEnqueueWriteBuffer(command_queue, buf_ant_tours, CL_TRUE, 0, num_ants * num_cities * sizeof(int), ant_tours, 0, NULL, NULL);
             clEnqueueWriteBuffer(command_queue, buf_ant_lengths, CL_TRUE, 0, num_ants * sizeof(double), ant_lengths, 0, NULL, NULL);
             clEnqueueWriteBuffer(command_queue, buf_ant_randoms, CL_TRUE, 0, num_ants * num_cities * sizeof(int), ant_randoms, 0, NULL, NULL);
@@ -232,7 +231,7 @@ int main(int argc, char *argv[])
             size_t global_work_size = n_work_groups * local_work_size;
 
             // Apply the kernel on the range
-            clEnqueueNDRangeKernel(
+            err = clEnqueueNDRangeKernel(
                 command_queue,
                 kernel,
                 1,
@@ -241,9 +240,40 @@ int main(int argc, char *argv[])
                 &local_work_size,
                 0,
                 NULL,
-                NULL);
+                &kernel_event);
+            if (err != CL_SUCCESS)
+            {
+                printf("%d\n", err);
+                return 0;
+            }
 
-            clFinish(command_queue);
+            err = clWaitForEvents(1, &kernel_event);
+            if (err != CL_SUCCESS)
+            {
+                printf("%d\n", err);
+                return 0;
+            }
+
+            // Get profiling info
+
+            cl_ulong start_time, end_time;
+            err = clGetEventProfilingInfo(kernel_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start_time, NULL);
+            if (err != CL_SUCCESS)
+            {
+                printf("%d\n", err);
+                return 0;
+            }
+
+            err = clGetEventProfilingInfo(kernel_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end_time, NULL);
+            if (err != CL_SUCCESS)
+            {
+                printf("%d\n", err);
+                return 0;
+            }
+
+            // Calculate kernel time, and update full kernel time
+            double kernel_time = (double)(end_time - start_time) * 1.0e-9;
+            full_kernel_time += kernel_time;
 
             // Copy the output matrices back to the CPU memory
             err = clEnqueueReadBuffer(command_queue, buf_pheromones, CL_TRUE, 0, num_cities * num_cities * sizeof(double), pheromones, 0, NULL, NULL);
@@ -286,7 +316,7 @@ int main(int argc, char *argv[])
         end = clock();
         total_time = ((double)(end - start)) / CLK_TCK;
 
-        fprintf(file, "%d %lf %lf\n", num_ants, total_time, best_length);
+        fprintf(file, "%d %lf %lf %lf\n", num_ants, total_time, full_kernel_time, best_length);
 
         // Release the mem objects
         clReleaseMemObject(buf_pheromones);
