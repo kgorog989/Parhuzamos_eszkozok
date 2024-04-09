@@ -19,9 +19,9 @@ int main(int argc, char *argv[])
     cl_int err;
     int error_code;
 
-    int num_iterations = 100;
+    int num_iterations = 5;
     int num_ants;
-    int max_ants = 20;
+    int max_ants = 5;
     int num_cities = 312;
     double city_distances[num_cities][num_cities];
     double pheromones[num_cities][num_cities];
@@ -155,33 +155,75 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    printf("\nstart for");
     for (num_ants = 2; num_ants <= max_ants; num_ants++)
     {
 
         start = clock();
+        printf("\n in for");
 
-        int ant_tours[num_ants][num_iterations][num_cities];
-        double ant_lengths[num_ants][num_iterations];
-        double ant_randoms[num_ants][num_iterations][num_cities];
-        int visited_cities[num_ants][num_iterations][num_cities];
+        // int ant_tours[num_ants][num_iterations][num_cities];
+        // double ant_lengths[num_ants][num_iterations];
+        // double ant_randoms[num_ants][num_iterations][num_cities];
+        // int visited_cities[num_ants][num_iterations][num_cities];
+        //  Dynamically allocate memory for ant_tours
+        // Dynamically allocate memory for ant_tours
+        int(*ant_tours)[num_iterations][num_cities] = malloc(num_ants * sizeof(int[num_iterations][num_cities]));
+        if (ant_tours == NULL)
+        {
+            printf("Memory allocation failed\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // Dynamically allocate memory for ant_lengths
+        double(*ant_lengths)[num_iterations] = malloc(num_ants * sizeof(double[num_iterations]));
+        if (ant_lengths == NULL)
+        {
+            printf("Memory allocation failed\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // Dynamically allocate memory for ant_randoms
+        double(*ant_randoms)[num_iterations][num_cities] = malloc(num_ants * sizeof(double[num_iterations][num_cities]));
+        if (ant_randoms == NULL)
+        {
+            printf("Memory allocation failed\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // Dynamically allocate memory for visited_cities
+        int(*visited_cities)[num_iterations][num_cities] = malloc(num_ants * sizeof(int[num_iterations][num_cities]));
+        if (visited_cities == NULL)
+        {
+            printf("Memory allocation failed\n");
+            exit(EXIT_FAILURE);
+        }
+
         best_length = INFINITY;
+        // Check memory allocation
+        printf("\nmatrix matrices");
 
         init_pheromones(num_cities, pheromones);
-        init_ants(num_ants, num_iterations, ant_tours, ant_lengths);
+        printf("\n init pheromones");
+        init_ants(num_ants, num_iterations, num_cities, ant_tours, ant_lengths);
+        printf("\ninit ants");
         init_ant_randoms(num_ants, num_iterations, num_cities, ant_randoms);
         init_visited_cities(num_ants, num_iterations, num_cities, ant_tours, visited_cities);
+        printf("\ninit all");
 
         cl_mem buf_pheromones = clCreateBuffer(context, CL_MEM_READ_WRITE, num_cities * num_cities * sizeof(double), NULL, NULL);
         cl_mem buf_ant_tours = clCreateBuffer(context, CL_MEM_READ_WRITE, num_ants * num_iterations * num_cities * sizeof(int), NULL, NULL);
         cl_mem buf_ant_lengths = clCreateBuffer(context, CL_MEM_READ_WRITE, num_ants * num_iterations * sizeof(double), NULL, NULL);
-        cl_mem buf_ant_randoms = clCreateBuffer(context, CL_MEM_READ_WRITE, num_ants * num_iterations * num_cities * sizeof(int), NULL, NULL);
+        cl_mem buf_ant_randoms = clCreateBuffer(context, CL_MEM_READ_WRITE, num_ants * num_iterations * num_cities * sizeof(double), NULL, NULL);
         cl_mem buf_visited_cities = clCreateBuffer(context, CL_MEM_READ_WRITE, num_ants * num_iterations * num_cities * sizeof(int), NULL, NULL);
+        printf("\ncreate buffers");
 
         clEnqueueWriteBuffer(command_queue, buf_pheromones, CL_TRUE, 0, num_cities * num_cities * sizeof(double), pheromones, 0, NULL, NULL);
         clEnqueueWriteBuffer(command_queue, buf_ant_tours, CL_TRUE, 0, num_ants * num_iterations * num_cities * sizeof(int), ant_tours, 0, NULL, NULL);
         clEnqueueWriteBuffer(command_queue, buf_ant_lengths, CL_TRUE, 0, num_ants * num_iterations * sizeof(double), ant_lengths, 0, NULL, NULL);
-        clEnqueueWriteBuffer(command_queue, buf_ant_randoms, CL_TRUE, 0, num_ants * num_iterations * num_cities * sizeof(int), ant_randoms, 0, NULL, NULL);
+        clEnqueueWriteBuffer(command_queue, buf_ant_randoms, CL_TRUE, 0, num_ants * num_iterations * num_cities * sizeof(double), ant_randoms, 0, NULL, NULL);
         clEnqueueWriteBuffer(command_queue, buf_visited_cities, CL_TRUE, 0, num_ants * num_iterations * num_cities * sizeof(int), visited_cities, 0, NULL, NULL);
+        printf("\nwrite buffers");
 
         cl_event kernel_event;
         double full_kernel_time = 0;
@@ -228,6 +270,7 @@ int main(int argc, char *argv[])
             printf("%d\n", err);
             return 0;
         }
+        printf("\nkernel arguments");
 
         // Size specification
         size_t local_work_size = 256;
@@ -250,13 +293,17 @@ int main(int argc, char *argv[])
             printf("%d\n", err);
             return 0;
         }
+        printf("\nthe kernel enqued");
+
+        // clFinish(command_queue);
 
         err = clWaitForEvents(1, &kernel_event);
         if (err != CL_SUCCESS)
         {
-            printf("%d\n", err);
+            printf("Error waiting for kernel event: %d\n", err);
             return 0;
         }
+        printf("\nkernel done");
 
         // Get profiling info
 
@@ -274,6 +321,7 @@ int main(int argc, char *argv[])
             printf("%d\n", err);
             return 0;
         }
+        printf("profiling done");
 
         // Calculate kernel time
         full_kernel_time = (double)(end_time - start_time) * 1.0e-9;
@@ -288,7 +336,7 @@ int main(int argc, char *argv[])
 
         clFinish(command_queue);
 
-        err = clEnqueueReadBuffer(command_queue, buf_ant_tours, CL_TRUE, 0, num_ants * num_cities * sizeof(int), ant_tours, 0, NULL, NULL);
+        err = clEnqueueReadBuffer(command_queue, buf_ant_tours, CL_TRUE, 0, num_ants * num_iterations * num_cities * sizeof(int), ant_tours, 0, NULL, NULL);
         if (err != CL_SUCCESS)
         {
             printf("%d\n", err);
@@ -297,7 +345,7 @@ int main(int argc, char *argv[])
 
         clFinish(command_queue);
 
-        err = clEnqueueReadBuffer(command_queue, buf_ant_lengths, CL_TRUE, 0, num_ants * sizeof(double), ant_lengths, 0, NULL, NULL);
+        err = clEnqueueReadBuffer(command_queue, buf_ant_lengths, CL_TRUE, 0, num_ants * num_iterations * sizeof(double), ant_lengths, 0, NULL, NULL);
         if (err != CL_SUCCESS)
         {
             printf("%d\n", err);
@@ -327,6 +375,46 @@ int main(int argc, char *argv[])
         clReleaseMemObject(buf_ant_lengths);
         clReleaseMemObject(buf_ant_randoms);
         clReleaseMemObject(buf_visited_cities);
+
+        // Free memory for ant_tours
+        for (int i = 0; i < num_ants; i++)
+        {
+            for (int j = 0; j < num_iterations; j++)
+            {
+                free(ant_tours[i][j]);
+            }
+            free(ant_tours[i]);
+        }
+        free(ant_tours);
+
+        // Free memory for ant_lengths
+        for (int i = 0; i < num_ants; i++)
+        {
+            free(ant_lengths[i]);
+        }
+        free(ant_lengths);
+
+        // Free memory for ant_randoms
+        for (int i = 0; i < num_ants; i++)
+        {
+            for (int j = 0; j < num_iterations; j++)
+            {
+                free(ant_randoms[i][j]);
+            }
+            free(ant_randoms[i]);
+        }
+        free(ant_randoms);
+
+        // Free memory for visited_cities
+        for (int i = 0; i < num_ants; i++)
+        {
+            for (int j = 0; j < num_iterations; j++)
+            {
+                free(visited_cities[i][j]);
+            }
+            free(visited_cities[i]);
+        }
+        free(visited_cities);
     }
 
     fclose(file);

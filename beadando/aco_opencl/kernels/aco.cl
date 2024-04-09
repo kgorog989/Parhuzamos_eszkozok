@@ -13,6 +13,7 @@ __kernel void generate_solutions(const int num_ants, const int num_cities,
   int i = get_global_id(0);
 
   if (i < num_ants) {
+    printf("generate id : %d", i);
     double total_probabilities, random_num, probability_sum,
         probability_to_move;
     int current_city, next_city, next_city_found;
@@ -49,7 +50,7 @@ __kernel void generate_solutions(const int num_ants, const int num_cities,
       }
 
       if (next_city_found == 0) {
-        for (int n = num_cities - 1; n >= 0; n--) {
+        for (int n = 0; n < num_cities; n++) {
           if (visited_cities[i * num_cities + n] == 0) {
             next_city = n;
             break;
@@ -78,14 +79,15 @@ __kernel void iterate(const int num_ants, const int num_cities,
                       const __global double *ant_randoms,
                       __global int *visited_cities, const int num_iterations) {
   int id = get_global_id(0);
+  printf("\n inside id: %d", id);
   for (int i = 0; i < num_iterations; i++) {
 
     generate_solutions(
         num_ants, num_cities, city_distances, pheromones,
-        &ant_tours[id * num_cities * num_iterations + i * num_cities],
+        &ant_tours[id * num_iterations * num_cities + i * num_cities],
         &ant_lengths[id * num_iterations],
-        &ant_randoms[id * num_cities * num_iterations + i * num_cities],
-        &visited_cities[id * num_cities * num_iterations + i * num_cities]);
+        &ant_randoms[id * num_iterations * num_cities + i * num_cities],
+        &visited_cities[id * num_iterations * num_cities + i * num_cities]);
 
     // Updating pheromones
     int city1, city2;
@@ -102,15 +104,15 @@ __kernel void iterate(const int num_ants, const int num_cities,
     {
         for (int j = 0; j < num_cities - 1; j++)
         {
-            city1 = ant_tours[k * num_cities + j];
-            city2 = ant_tours[k * num_cities + j];
-            pheromones[city2 * k + j] += Q / ant_lengths[k * num_iterations + id];
-            pheromones[city1 * k + j] += Q / ant_lengths[k * num_iterations + id];
+            city1 = ant_tours[id * num_iterations * num_cities + i * num_cities + j];
+            city2 = ant_tours[id * num_iterations * num_cities + i * num_cities + j + 1];
+            pheromones[city2 * num_cities + city1] += Q / ant_lengths[id * num_iterations + i];
+            pheromones[city1 * num_cities + city2] += Q / ant_lengths[id * num_iterations + i];
         }
-        city1 = ant_tours[k * num_cities + num_cities - 1];
-        city2 = ant_tours[k * num_cities + 0];
-        pheromones[city2 * num_cities + city1] += Q / ant_lengths[k * num_iterations + id];
-        pheromones[city1 * num_cities + city2] += Q / ant_lengths[k * num_iterations + id];
+        city1 = ant_tours[id * num_iterations * num_cities + i * num_cities + num_cities - 1];
+        city2 = ant_tours[id * num_iterations * num_cities + i * num_cities];
+        pheromones[city2 * num_cities + city1] += Q / ant_lengths[id * num_iterations + i];
+        pheromones[city1 * num_cities + city2] += Q / ant_lengths[id * num_iterations + i];
     }
   }
 }
