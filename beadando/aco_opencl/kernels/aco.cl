@@ -13,13 +13,12 @@ __kernel void iterate(const int num_ants, const int num_cities,
   if (ant_id > num_ants) {
     return;
   }
-  printf("start ant id: %d\n", ant_id);
+  //printf("start ant id: %d\n", ant_id);
 
   for (int i = 0; i < num_iterations; i++) {
     double total_probabilities, random_num, probability_sum,
         probability_to_move;
     int current_city, next_city, next_city_found;
-    // printf("\nin for ant id: %d", ant_id);
 
     // Set the current city
     current_city =
@@ -101,39 +100,19 @@ __kernel void iterate(const int num_ants, const int num_cities,
           int tour_index = k * num_iterations * num_cities + i * num_cities + l;
           city1 = ant_tours[tour_index];
           city2 = ant_tours[tour_index + 1];
-          if (/*city2 < 0 || */ city2 >= num_cities) {
-            printf("\n %d %d cities\n", city1, city2);
-            printf("%d %d %d\n", k, i, l);
-            printf("%d %d %d\n", num_iterations, num_cities, tour_index + 1);
-            printf("num_ants = %d\n", num_ants);
-            printf("Invalid value at %d is %d\n", tour_index + 1, city2);
-            for (int z = 0; z < 200; ++z) {
-              printf(".");
-            }
-            printf("\n");
-            printf("Tours ():\n");
-            for (int z = 0; z < 22 * 50 * num_ants; ++z) {
-              printf("%d ", ant_tours[z]);
-            }
-            printf("\n");
-          }
-
           pheromones[city2 * num_cities + city1] +=
               Q / ant_lengths[k * num_iterations + i];
-          // printf("\n %f pheromones \n", pheromones[city2 * num_cities +
-          // city1]);
           pheromones[city1 * num_cities + city2] +=
               Q / ant_lengths[k * num_iterations + i];
-          // printf("\n %f pheromones \n", pheromones[city2 * num_cities +
-          // city1]);
         }
-        city1 = ant_tours[k * num_iterations * num_cities + i * num_cities +
-                          num_cities - 1];
-        city2 = ant_tours[k * num_iterations * num_cities + i * num_cities];
+        // Depositing pheromones to the first and last tour
+        int tour_index = k * num_iterations * num_cities + i * num_cities;
+        city1 = ant_tours[tour_index - 1];
+        city2 = ant_tours[tour_index];
         pheromones[city2 * num_cities + city1] +=
             Q / ant_lengths[k * num_iterations + i];
         pheromones[city1 * num_cities + city2] +=
-            Q / ant_lengths[k * num_iterations + i]; /**/
+            Q / ant_lengths[k * num_iterations + i];
       }
     }
     barrier(CLK_GLOBAL_MEM_FENCE);
