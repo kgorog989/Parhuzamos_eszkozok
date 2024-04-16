@@ -19,10 +19,10 @@ int main(int argc, char *argv[])
     cl_int err;
     int error_code;
 
-    int num_iterations = 30;
+    int num_iterations = 50;
     int num_ants;
-    int max_ants = 30;
-    int num_cities = 312;
+    int max_ants = 10;
+    int num_cities = 22;
     double city_distances[num_cities][num_cities];
     double pheromones[num_cities][num_cities];
     int best_tour[num_cities];
@@ -113,12 +113,12 @@ int main(int argc, char *argv[])
 
     // Fill the distance matrix
     FILE *file;
-    if ((file = fopen("data/times_usca312.txt", "w")) == NULL)
+    if ((file = fopen("data/times_ger22.txt", "w")) == NULL)
     {
         printf("File opening error");
         exit(-1);
     }
-    init_distance_matrix("data/usca312.txt", num_cities, city_distances);
+    init_distance_matrix("data/ger22.txt", num_cities, city_distances);
 
     cl_mem buf_city_distances = clCreateBuffer(context, CL_MEM_READ_ONLY, num_cities * num_cities * sizeof(double), NULL, NULL);
     clEnqueueWriteBuffer(command_queue, buf_city_distances, CL_TRUE, 0, num_cities * num_cities * sizeof(double), city_distances, 0, NULL, NULL);
@@ -261,10 +261,11 @@ int main(int argc, char *argv[])
         }
 
         // Size specification
-        size_t local_work_size = 1;
+        size_t local_work_size = num_ants;
         size_t global_work_size = num_ants;
 
         printf("\napplying kernel");
+        printf("local_work_size = %d, global_work_size = %d\n", local_work_size, global_work_size);
         // Apply the kernel on the range
         err = clEnqueueNDRangeKernel(
             command_queue,
