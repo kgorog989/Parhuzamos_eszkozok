@@ -19,9 +19,9 @@ int main(int argc, char *argv[])
     cl_int err;
     int error_code;
 
-    int num_iterations = 5;
+    int num_iterations = 30;
     int num_ants;
-    int max_ants = 5;
+    int max_ants = 30;
     int num_cities = 312;
     double city_distances[num_cities][num_cities];
     double pheromones[num_cities][num_cities];
@@ -191,6 +191,7 @@ int main(int argc, char *argv[])
             printf("Memory allocation failed\n");
             exit(EXIT_FAILURE);
         }
+        printf("\n memory allocated");
 
         // Setting best tour length to infinity
         best_length = INFINITY;
@@ -199,6 +200,7 @@ int main(int argc, char *argv[])
         init_ants(num_ants, num_iterations, num_cities, ant_tours, ant_lengths);
         init_ant_randoms(num_ants, num_iterations, num_cities, ant_randoms);
         init_visited_cities(num_ants, num_iterations, num_cities, ant_tours, visited_cities);
+        printf("\ninitialization complete");
 
         cl_mem buf_pheromones = clCreateBuffer(context, CL_MEM_READ_WRITE, num_cities * num_cities * sizeof(double), NULL, NULL);
         cl_mem buf_ant_tours = clCreateBuffer(context, CL_MEM_READ_WRITE, num_ants * num_iterations * num_cities * sizeof(int), NULL, NULL);
@@ -262,6 +264,7 @@ int main(int argc, char *argv[])
         size_t local_work_size = 1;
         size_t global_work_size = num_ants;
 
+        printf("\napplying kernel");
         // Apply the kernel on the range
         err = clEnqueueNDRangeKernel(
             command_queue,
@@ -338,12 +341,12 @@ int main(int argc, char *argv[])
 
         // Find the best tour among the iterations
         find_best_tour(num_cities, num_iterations, num_ants, ant_tours, ant_lengths, best_tour, &best_length);
-        
+        /*
         printf("\nBest tour: ");
         for (int i = 0; i < num_cities; i++)
         {
             printf("%d ", best_tour[i]);
-        }
+        }*/
         printf("\nBest tour length: %lf\n", best_length);
         end = clock();
         total_time = ((double)(end - start)) / CLK_TCK;
@@ -357,12 +360,15 @@ int main(int argc, char *argv[])
         clReleaseMemObject(buf_ant_randoms);
         clReleaseMemObject(buf_visited_cities);
 
+        clFinish(command_queue);
+
         // Free matrices
         free(ant_tours);
         free(ant_lengths);
         free(ant_randoms);
         free(visited_cities);
     }
+    clFlush(command_queue);
 
     fclose(file);
 
