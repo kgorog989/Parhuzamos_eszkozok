@@ -14,7 +14,7 @@ Az ACO (Ant Colony Optimization, hangya kolónia algoritmus) egy olyan algoritmu
 
 ## TSP
 
-A TSP (Traveling Salesman Problem, utazóügynök probléma) az egyik leginkább kutatott optimalizációs problámák közé tartozik. Legyen adott egy városhalmaz. A probléma arra a kérdésre keresi a választ, hogy hogyan látogathatjuk meg a legrövidebb útvonallal az összes várost úgy, hogy végül az kiindulási városba térünk vissza. A problémát leggyakrabban gráfhalmazzal szokták reprezentálni. 
+A TSP (Traveling Salesman Problem, utazóügynök probléma) az egyik leginkább kutatott optimalizációs problámák közé tartozik. Legyen adott egy városhalmaz. A probléma arra a kérdésre keresi a választ, hogy hogyan látogathatjuk meg a legrövidebb útvonallal az összes várost úgy, hogy végül a kiindulási városba térünk vissza. A problémát leggyakrabban gráfhalmazzal szokták reprezentálni. 
 
 ## Megvalósítás, futási eredmények
 
@@ -22,6 +22,17 @@ A feladatot a *beadando* mappában oldottam meg. Az *aco_opencl* az OpenCL-ben t
 
 
 Az OpenCL-ben történő megvalósításhoz bizonyos tömbök megvalósításánál 3D-s tömbök használatára volt szükségem. Ez a kernel lehető leghatékonyabb megvalósítása érdekében történt. A tömbök a következőek: *ant_tours, ant_randoms, visited_cities*. Mindegyiknél az első dimenzió a hangyák száma, a második az iterációk száma, a harmadik a városok száma. Emiatt az *ant_lengths* két dimenziós lett, hiszen benne is fontos az iterációk száma. Első dimenziója a hangyák száma, második az iterációk száma. 
+
+
+A következő ábrán a futási eredmények grafikus szemléltetése látható.
+
+
+
+<img width="100%" alt="image" src="https://github.com/kgorog989/Parhuzamos_eszkozok/assets/90555277/61244e93-95a2-4697-9f52-4ebb2102d041">
+
+
+
+A következő alpontokban a futtatások eredményei találhatók. A eredmények alapján nem éri meg az OpenCL használata. A párhuzamosítás ellenére több időt vesz igénybe, mint a szekvenciális módszer használata. Más módszerek használata eredményesebb lehet. A legjobb út keresése viszont mindkét esetben hasonlóan hatékony. 
 
 ### 22 város esetén
 
