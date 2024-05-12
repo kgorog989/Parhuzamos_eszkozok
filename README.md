@@ -10,9 +10,18 @@ A választott féléves feladatom az ant colony algoritmus (ACO) implementálás
 
 ## ACO
 
+Az ACO (Ant Colony Optimization, hangya kolónia algoritmus) egy olyan algoritmus, amely a hangyák viselkedését veszi alapul egy probléma megoldására. Adott egy kolónia, ami több hangyából áll. A hangyák több iterációban bejárják a gráfként reprezentált problémát, így keresik a megoldást. Az egyes iterációkban feromon utat hagynak maguk után, ami a következő iterációkban történő keresést segíti, hiszen a több feromont tartalmazó utat nagyobb valószínűséggel fogják választani legközelebb. Az algoritmus tartalmaz némi randomizációt, hogy ne mindig ugyanazt az utat járják be a hangyák, így biztosítva a teljes gráf felfedezését. A feromon utak egy idő után az intenzitásukból is veszítenek, ezért az egyes iterációban csökkenn az erősségük is némileg. A feromonoknak köszönhetően juthatunk közelebb az optimális megoldáshoz. Az algoritmus egy részecske-raj optimalizálás algoritmus. 
+
 ## TSP
 
+A TSP (Traveling Salesman Problem, utazóügynök probléma) az egyik leginkább kutatott optimalizációs problámák közé tartozik. Legyen adott egy városhalmaz. A probléma arra a kérdésre keresi a választ, hogy hogyan látogathatjuk meg a legrövidebb útvonallal az összes várost úgy, hogy végül az kiindulási városba térünk vissza. A problémát leggyakrabban gráfhalmazzal szokták reprezentálni. 
+
 ## Megvalósítás, futási eredmények
+
+A feladatot a *beadando* mappában oldottam meg. Az *aco_opencl* az OpenCL-ben történő, az *aco_seq* a szekvenciális megoldást tartalmazza. Mindegyik programot teszteltem 22 és 312 város esetén is. A városok közötti távolságokat tartalmazó mátrixok a *data* mappában találhatók (22 város esetén: *ger22.txt*, 312 esetén: *usca312.txt*). Ugyanebbe a mappába mentettem az egyes futási eredményeket *times_MÁTRIXNEVE.txt* néven. 
+
+
+Az OpenCL-ben történő megvalósításhoz bizonyos tömbök megvalósításánál 3D-s tömbök használatára volt szükségem. Ez a kernel lehető leghatékonyabb megvalósítása érdekében történt. A tömbök a következőek: *ant_tours, ant_randoms, visited_cities*. Mindegyiknél az első dimenzió a hangyák száma, a második az iterációk száma, a harmadik a városok száma. Emiatt az *ant_lengths* két dimenziós lett, hiszen benne is fontos az iterációk száma. Első dimenziója a hangyák száma, második az iterációk száma. 
 
 ### 22 város esetén
 
@@ -331,6 +340,8 @@ A választott féléves feladatom az ant colony algoritmus (ACO) implementálás
 | 100 | 81.809000  | 45264.000000 |
 
 #### OpenCL program
+
+A túl hosszú futási idők miatt futásonként tízzel növeltem a hangyák számát. Az eredmény így is szemléletes. 
 
 | Hangyák száma | Teljes futási idő | Kernelben töltött idő | Legjobb út hossza |
 |-----|------------|------------|--------------|
